@@ -85,6 +85,7 @@ impl eframe::App for Launcher {
                             egui::ProgressBar::new(progress)
                                 .text(format!("{}%", (progress * 100.0) as u8)),
                         );
+                        ctx.request_repaint_after(std::time::Duration::from_millis(50));
                     } else {
                         ui.style_mut().text_styles.insert(
                             egui::TextStyle::Button,
@@ -99,6 +100,7 @@ impl eframe::App for Launcher {
                         {
                             if let Some(version) = &self.selected_version {
                                 version.play(&self.version_manager);
+                                ctx.request_repaint_after(std::time::Duration::from_millis(500));
                             } else {
                                 self.toasts.lock().unwrap().error("No version selected");
                             }
