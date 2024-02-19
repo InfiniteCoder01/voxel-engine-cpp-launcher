@@ -1,0 +1,23 @@
+[package]
+name = "voxel-engine-cpp-launcher"
+version = "0.1.0"
+edition = "2021"
+authors = ["InfiniteCoder <info@infinitecoder.org>"]
+description = "A launcher for VoxelEngine"
+readme = "README.md"
+repository = "https://github.com/InfiniteCoder01/voxel-engine-cpp-launcher"
+license = "MIT"
+keywords = ["VoxelEngine-Cpp", "launcher"]
+categories = ["game-engines", "games"]
+
+[dependencies]
+eframe = "0.26"
+egui_extras = { version = "0.26", features = ["all_loaders"] }
+image = { version = "0.24", features = ["png"] }
+env_logger = "0.11"
+egui-phosphor = "0.4.0"
+octocrab = "0.34.1"
+tokio = { version = "1.36.0", features = ["rt-multi-thread"] }
+egui-notify = "0.13.0"
+reqwest = "0.11.24"
+zip-extract = "0.1.3"
