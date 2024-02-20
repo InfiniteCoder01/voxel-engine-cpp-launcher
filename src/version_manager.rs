@@ -97,7 +97,7 @@ impl Version {
         {
             VersionData::Binary {
                 url: binary_url,
-                unzip: cfg!(windows) || true,
+                unzip: cfg!(windows),
             }
         } else if let Some(source_url) = release.zipball_url.map(|url| url.to_string()) {
             VersionData::Source {
@@ -204,7 +204,7 @@ impl Version {
 }
 
 fn find_platform_version(asset: &octocrab::models::repos::Asset) -> bool {
-    if cfg!(windows) || true {
+    if cfg!(windows) {
         asset.name.contains("win64")
     } else if cfg!(unix) {
         asset.name.contains("AppImage")
@@ -214,7 +214,7 @@ fn find_platform_version(asset: &octocrab::models::repos::Asset) -> bool {
 }
 
 fn executable_name() -> String {
-    if cfg!(windows) || true {
+    if cfg!(windows) {
         "VoxelEngine.exe".to_string()
     } else {
         "VoxelEngine.AppImage".to_string()
