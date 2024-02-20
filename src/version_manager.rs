@@ -97,7 +97,7 @@ impl Version {
         {
             VersionData::Binary {
                 url: binary_url,
-                unzip: cfg!(windows),
+                unzip: cfg!(windows) || true,
             }
         } else if let Some(source_url) = release.zipball_url.map(|url| url.to_string()) {
             VersionData::Source {
@@ -204,7 +204,7 @@ impl Version {
 }
 
 fn find_platform_version(asset: &octocrab::models::repos::Asset) -> bool {
-    if cfg!(windows) {
+    if cfg!(windows) || true {
         asset.name.contains("win64")
     } else if cfg!(unix) {
         asset.name.contains("AppImage")
@@ -214,7 +214,7 @@ fn find_platform_version(asset: &octocrab::models::repos::Asset) -> bool {
 }
 
 fn executable_name() -> String {
-    if cfg!(windows) {
+    if cfg!(windows) || true {
         "VoxelEngine.exe".to_string()
     } else {
         "VoxelEngine.AppImage".to_string()
@@ -231,8 +231,11 @@ fn get_version_path(name: &str) -> std::path::PathBuf {
 
 fn run_version_binary(name: &str, toasts: Arc<Mutex<egui_notify::Toasts>>) {
     toasts.lock().unwrap().info("Running the game");
+    let verpath = get_version_path(name);
     if let Err(err) =
-        std::process::Command::new(get_version_path(name).join(executable_name())).spawn()
+        std::process::Command::new(verpath.join(executable_name()).canonicalize().unwrap())
+            .current_dir(verpath)
+            .spawn()
     {
         toasts
             .lock()
