@@ -1,2 +1,4 @@
 /target
 /versions
+/luajit
+/launcher.toml
