@@ -1,0 +1,5 @@
+dark_mode = true
+build_unsupported = true
+use_prebuilt_when_possible = false
+download_lua = true
+last_version = "Latest (Git)"

@@ -1,0 +1,145 @@
+use std::sync::Arc;
+use std::sync::Mutex;
+
+pub async fn download(
+    url: &str,
+    toasts: Arc<Mutex<egui_notify::Toasts>>,
+    progress_bar: Arc<Mutex<Option<f32>>>,
+    name: &str,
+) -> Option<Vec<u8>> {
+    let bytes = match reqwest::ClientBuilder::new()
+        .user_agent("VoxelLauncherWGET/1.0")
+        .build()
+        .unwrap()
+        .get(url)
+        .send()
+        .await
+    {
+        Ok(mut response) => {
+            let progress_bar = progress_bar.clone();
+            let download = || async move {
+                let mut bytes = Vec::new();
+                let mut progress = 0;
+                let content_length = response.content_length();
+                while let Some(chunk) = response.chunk().await? {
+                    bytes.extend_from_slice(&chunk);
+                    progress += chunk.len();
+                    if let Some(length) = content_length {
+                        progress_bar
+                            .lock()
+                            .unwrap()
+                            .replace(progress as f32 / length as f32);
+                    }
+                }
+                Ok(bytes)
+            };
+            download().await
+        }
+        Err(err) => Err(err),
+    };
+    bytes
+        .map_err(|err| {
+            toasts
+                .lock()
+                .unwrap()
+                .error(format!("Failed to download {}: {}", name, err));
+        })
+        .ok()
+}
+
+pub async fn run_command(
+    command: &str,
+    args: &[&str],
+    path: &std::path::PathBuf,
+    toasts: Arc<Mutex<egui_notify::Toasts>>,
+    mut line_callback: impl FnMut(&str),
+) -> bool {
+    use tokio::process::Command;
+    use tokio_process_stream::ProcessLineStream;
+    use tokio_stream::StreamExt;
+    let mut procstream =
+        match ProcessLineStream::try_from(Command::new(command).args(args).current_dir(path)) {
+            Ok(procstream) => procstream,
+            Err(err) => {
+                toasts
+                    .lock()
+                    .unwrap()
+                    .error(format!("Failed to run command: {}", err));
+                return false;
+            }
+        };
+    let mut errors = String::new();
+    while let Some(item) = procstream.next().await {
+        use tokio_process_stream::Item;
+        match item {
+            Item::Stdout(line) => line_callback(&line),
+            Item::Stderr(err) => errors.push_str(&format!("{}\n", err)),
+            Item::Done(status) => {
+                if !errors.is_empty() {
+                    toasts.lock().unwrap().error(&errors);
+                }
+                match status {
+                    Ok(status) => {
+                        if !status.success() {
+                            toasts.lock().unwrap().error("Failed to run command!");
+                            return false;
+                        }
+                    }
+                    Err(err) => {
+                        toasts
+                            .lock()
+                            .unwrap()
+                            .error(format!("Failed to run command: {}", err));
+                        return false;
+                    }
+                }
+            }
+        }
+    }
+    true
+}
+
+pub fn find_platform_version(asset: &octocrab::models::repos::Asset) -> bool {
+    if cfg!(windows) {
+        asset.name.contains("win64")
+    } else if cfg!(unix) {
+        asset.name.contains("AppImage")
+    } else {
+        false
+    }
+}
+
+pub fn executable_name() -> String {
+    if cfg!(windows) {
+        "VoxelEngine.exe".to_string()
+    } else {
+        "VoxelEngine.AppImage".to_string()
+    }
+}
+
+pub fn get_versions_path() -> std::path::PathBuf {
+    std::path::Path::new("versions").to_path_buf()
+}
+
+pub fn get_version_path(name: &str) -> std::path::PathBuf {
+    get_versions_path().join(name)
+}
+
+pub fn run_version_binary(name: &str, toasts: Arc<Mutex<egui_notify::Toasts>>) {
+    toasts.lock().unwrap().info("Running the game");
+    let verpath = get_version_path(name);
+    if let Err(err) = verpath
+        .join(executable_name())
+        .canonicalize()
+        .and_then(|binpath| {
+            std::process::Command::new(binpath)
+                .current_dir(verpath)
+                .spawn()
+        })
+    {
+        toasts
+            .lock()
+            .unwrap()
+            .error(format!("Failed to run game executable: {}", err));
+    }
+}
